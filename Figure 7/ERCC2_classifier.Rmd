@@ -1,0 +1,143 @@
+---
+title: "Figure 7: ERCC2 classifier"
+output:
+  html_document: default
+  pdf_document: default
+date: "2024-05-09"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+
+## Load ERCC2 mutation distribtion data
+
+Contains obs/exp mutation ratio for different regions of the genome from Genomics England BLCA samples.
+
+```{r load data}
+used_for_random_forest <- read.delim("GE_mutation_dist.txt")
+samp.name <- read.delim("GE_mutation_dist.txt")
+used_for_random_forest$X=NULL
+dat=data.frame(used_for_random_forest[1:58],y=as.factor(used_for_random_forest$Genotype))
+```
+
+## SVM classifier for distribution (Figure 7A)
+
+```{r SVM, echo=TRUE, fig.height=4, fig.width=14}
+if (!require("e1071")) install.packages("e1071")
+if (!require("caret")) install.packages("caret")
+y<-character()
+prob<-character()
+for (i in 1:nrow(dat)){
+    testset <- dat[i,]
+    trainset <- dat[-i,]
+    svmfit=svm(y~.,data=trainset,kernal="linear",cost=20,scale=FALSE,probability=TRUE)
+    y=c(y,predict(svmfit,testset))
+    prob=c(prob,attr(predict(svmfit,testset,probability=TRUE), "probabilities")[,2])
+}
+y=gsub("2","WT",y)
+y=gsub("1","ERCC2",y)
+confusionMatrix(dat$y,as.factor(y))
+
+rnk<-data.frame(x=as.character(samp.name$X),prob=as.numeric(prob),mut=used_for_random_forest$Genotype)
+rnk[order(-rnk$prob),]
+ggplot(rnk,aes(x=reorder(x,prob),y=prob,fill=mut))+geom_col()+theme_classic()+theme(axis.title.x=element_blank(),axis.text.x = element_blank(),axis.ticks.x = element_blank())+ylab("p(ERCC2 mutant)")+scale_y_continuous(limits=c(0,1),expand = c(0, 0))
+```
+
+## SVM variable importance (Figure 7B)
+
+```{r importance, echo=TRUE, fig.height=8, fig.width=6}
+if (!require("rminer")) install.packages("rminer")
+if (!require("ggplot2")) install.packages("gglot2")
+if (!require("caret")) install.packages("caret")
+
+svmfit=fit(y~.,data=dat,model="ksvm",cost=3, kernel="rbfdot",kpar="automatic")
+svm.imp <- Importance(svmfit, data=dat)
+
+imp<-data.frame(x=colnames(used_for_random_forest[1:58]),imp=svm.imp[["imp"]][1:58])
+ggplot(imp,aes(x=reorder(x,imp),y=imp))+geom_bar(stat="identity")+ coord_flip()+scale_fill_brewer(palette="Spectral")+theme_classic()+xlab("region")+ylab("importance")+scale_y_continuous(expand = c(0, 0))
+
+```
+
+## SVM TCGA test (Figure 7C)
+
+```{r svmTCGA, echo=TRUE}
+
+tcga_test <- read.delim("TCGA_mutation_dist.txt")
+
+svmfit=svm(y~.,data=dat,kernal="linear",cost=20,scale=FALSE,probability=TRUE)
+pred = predict(svmfit,tcga_test[2:59], probability=TRUE)
+pred
+res_tcga<-data.frame(name=tcga_test$name,pred=predict(svmfit,tcga_test[2:59]))
+res_tcga
+
+rnk<-data.frame(x=tcga_test$name,prob=attr(pred, "probabilities")[,2])
+ggplot(rnk,aes(x=reorder(x,prob),y=prob))+geom_bar(stat="identity")+scale_fill_brewer(palette="Spectral")+theme_classic()+theme(axis.title.x=element_blank(),axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+ylab("p(ERCC2 mutant)")+scale_y_continuous(expand = c(0, 0))
+
+```
+
+## SVM unknown ERCC2 test (Figure 7D)
+
+```{r svmUnknown, echo=TRUE}
+
+unknown_test <- read.delim("GE_non_hotspot_GE.txt")
+
+svmfit=svm(y~.,data=dat,kernal="linear",cost=20,scale=FALSE,probability=TRUE)
+pred = predict(svmfit,unknown_test[2:59], probability=TRUE)
+pred
+
+res_unknown<-data.frame(name=unknown_test$X,pred=predict(svmfit,unknown_test[2:59]))
+res_unknown
+
+rnk<-data.frame(x=unknown_test$X,prob=attr(pred, "probabilities")[,2])
+ggplot(rnk,aes(x=reorder(x,prob),y=prob))+geom_bar(stat="identity")+scale_fill_brewer(palette="Spectral")+theme_classic()+theme(axis.title.x=element_blank(),axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+ylab("p(ERCC2 mutant)")+scale_y_continuous(expand = c(0, 0))
+
+```
+## Load ERCC2 trinucleotide mutation data
+
+Contains trinucleotide mutation frequency of Genomics England BLCA samples.
+
+```{r load trinuc data}
+used_for_random_forest <- read.delim("GE_trinuc_SNVs.txt")
+samp.name <- read.delim("GE_trinuc_SNVs.txt")
+used_for_random_forest$X=NULL
+dat=data.frame(used_for_random_forest[1:96],y=as.factor(used_for_random_forest$Genotype))
+```
+
+## SVM classifier for trinucleotide (Figure S6A)
+
+```{r SVM trinuc, echo=TRUE, fig.height=4, fig.width=14}
+if (!require("e1071")) install.packages("e1071")
+if (!require("caret")) install.packages("caret")
+y<-character()
+prob<-character()
+for (i in 1:nrow(dat)){
+    testset <- dat[i,]
+    trainset <- dat[-i,]
+    svmfit=svm(y~.,data=trainset,kernal="linear",cost=20,scale=TRUE,probability=TRUE)
+    y=c(y,predict(svmfit,testset))
+    prob=c(prob,attr(predict(svmfit,testset,probability=TRUE), "probabilities")[,2])
+}
+y=gsub("2","WT",y)
+y=gsub("1","ERCC2",y)
+confusionMatrix(dat$y,as.factor(y))
+
+rnk<-data.frame(x=as.character(samp.name$X),prob=as.numeric(prob),mut=used_for_random_forest$Genotype)
+rnk[order(-rnk$prob),]
+ggplot(rnk,aes(x=reorder(x,prob),y=prob,fill=mut))+geom_col()+theme_classic()+theme(axis.title.x=element_blank(),axis.text.x = element_blank(),axis.ticks.x = element_blank())+ylab("p(ERCC2 mutant)")+scale_y_continuous(limits=c(0,1),expand = c(0, 0))
+```
+
+## SVM variable importance for trinucleotide (Figure S6B)
+
+```{r importance trinuc, echo=TRUE, fig.height=8, fig.width=6}
+if (!require("rminer")) install.packages("rminer")
+if (!require("ggplot2")) install.packages("gglot2")
+if (!require("caret")) install.packages("caret")
+
+svmfit=fit(y~.,data=dat,model="ksvm",cost=3, kernel="rbfdot",kpar="automatic")
+svm.imp <- Importance(svmfit, data=dat)
+
+imp<-data.frame(x=colnames(used_for_random_forest[1:96]),imp=svm.imp[["imp"]][1:96])
+ggplot(imp,aes(x=reorder(x,imp),y=imp))+geom_bar(stat="identity")+ coord_flip()+scale_fill_brewer(palette="Spectral")+theme_classic()+xlab("trinucleotide")+ylab("importance")+scale_y_continuous(expand = c(0, 0))
+
+```
