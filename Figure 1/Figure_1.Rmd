@@ -1,0 +1,139 @@
+---
+title: "Figure_1"
+author: 
+date: 
+output: 
+  html_document: 
+    fig_width: 10
+    fig_height: 10
+    fig_caption: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r message=FALSE, warning=FALSE}
+library(survival)
+library(survminer)
+library(gtsummary)
+library(dplyr)
+library(stringr)
+library(gtsummary)
+library(finalfit)
+library(maftools)
+library(ggplot2)
+library(cowplot)
+library(paletteer)
+library(ggsci)
+library(data.table)
+library(forestploter)
+```
+
+### Figure 1A
+
+```{r}
+##### Fig 1A #####
+msk_blca_ercc2 <- read.csv("msk_blca_ercc2.csv")
+surv_obj_OS <- Surv(time = msk_blca_ercc2$OS_MONTHS, event = msk_blca_ercc2$OS_STATUS2)
+fit_OS_XPD <- survfit(surv_obj_OS ~ XPDStatus, data = msk_blca_ercc2)
+OS_ALL <- ggsurvplot(fit_OS_XPD, conf.int=F, risk.table=T, 
+                     legend.labs=c("Mutation","WT"), legend.title="XPD",  
+                     palette=c("#FF8B00", "#B50070"), 
+                     risk.table.height=0.25,
+                     font.main = 14,
+                     font.x = 12,
+                     font.y = 12,
+                     surv.median.line = "hv",
+                     font.tickslab = 12,
+                     axes.offset=FALSE,
+                     legend = "right",
+                     break.time.by = 12)
+fig1a <- OS_ALL
+fig1a
+```
+
+### Figure 1B
+
+```{r message=FALSE, warning=FALSE}
+##### Fig 1B #####
+msk_blca_ercc2 <- read.csv("msk_blca_ercc2.csv")
+msk_blca_ercc2$SPECIMEN_STAGE <- as.factor(msk_blca_ercc2$SPECIMEN_STAGE)
+fig1b <- ggplot(msk_blca_ercc2, aes(fill=SPECIMEN_STAGE, x=XPDStatusWTorMut)) + 
+  geom_bar(position="fill", stat="count",color="black", size = 0.5, width = 0.7) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(y = "Propotion Sample (%)", x = "") +
+  scale_x_discrete(limits = c("WT", "Mutation"))+
+  scale_fill_manual(name = "Clinical Stage", 
+                    labels = c("Stage I", "Stage II", "Stage III", "Stage IV"),
+                    values=c("#56B4E9", '#FCCDE5', '#B3DE69', '#FDB462')) +
+  theme_classic()+
+  theme(axis.text =element_text(color = "black",size = 12),
+        axis.title = element_text(size = 14),
+        legend.position = "right",
+        legend.title = element_blank())
+fig1b
+```
+
+### Figure 1C
+
+```{r message=FALSE, warning=FALSE}
+fig1c <- ggplot(msk_blca_ercc2, aes(x = XPDStatusWTorMut,  y = Variants, fill = XPDStatusWTorMut)) +
+  geom_boxplot(width = 0.1) +
+  theme_minimal() +
+  labs(x = "", y = "TMB", fill = "XPDStatus") +
+  scale_x_discrete(limits = c("WT", "Mutation"))+
+  scale_fill_manual(values = c("WT" = "#FF8B00", "Mutation" = "#B50070"),
+                    labels = c("WT" = "XPD WT", "Mutation" = "XPD Mut")) +
+  theme_classic()+
+  theme(axis.text =element_text(color = "black",size = 12),
+        axis.title = element_text(size = 14),
+        legend.position = "right",
+        legend.title = element_blank())
+
+fig1c
+
+```
+
+### Figure 1D
+
+```{r message=FALSE, warning=FALSE}
+##### Fig 1D #####
+#Variables: sex, Age. XPD, stage group, log2TMB
+explanatory <- c("SEX","XPDStatus","SPECIMEN_STAGE_GROUP","VariantsLog2",
+                 "AGE_AT_DX")
+dependent = "Surv(OS_MONTHS, OS_STATUS2)"
+msk_blca_ercc2$XPDStatus <- as.factor(msk_blca_ercc2$XPDStatus)
+msk_blca_ercc2$SPECIMEN_STAGE <- as.factor(msk_blca_ercc2$SPECIMEN_STAGE)
+msk_blca_ercc2$XPDStatus <- relevel(msk_blca_ercc2$XPDStatus, ref = "WT") 
+msk_blca_ercc2 %>%
+  finalfit(dependent, explanatory) -> HR_table
+
+#Edit HR_table manually for plot the HR table and forest plot
+#save as df_for_forest.csv
+library(grid)
+library(forestploter)
+df_for_forest <- read.csv("df_for_forest.csv")
+df_for_forest$` ` <- paste(rep(" ", 20), collapse = " ")
+tm <- forest_theme(base_size = 10,
+                   refline_col = "red",
+                   footnote_col = "blue",
+                   legend_value = c("Univariable", "Multivarible"))
+fig1d <- forest(df_for_forest[,c(1, 2, 3, 4, 13)],
+            est = list(df_for_forest$est_uni,
+                       df_for_forest$est_multi),
+            lower = list(df_for_forest$lower_uni,
+                         df_for_forest$lower_multi), 
+            upper = list(df_for_forest$upper_uni,
+                         df_for_forest$upper_multi),
+            xlim = c(0, 6),
+            ci_column = c(5),
+            ref_line = 1,
+            #vert_line = c(0.5, 2),
+            nudge_y = 0.2,
+            theme = tm)
+fig1d <- edit_plot(fig1d,
+               row = c(1,4,5,8,11),
+               gp = gpar(fontface = "bold"))
+fig1d
+```

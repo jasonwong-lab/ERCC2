@@ -1,0 +1,252 @@
+---
+title: "Figure_S1"
+author: 
+date: 
+output: 
+  html_document: 
+    fig_width: 10
+    fig_height: 10
+    fig_caption: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r message=FALSE, warning=FALSE}
+library(survival)
+library(survminer)
+library(gtsummary)
+library(dplyr)
+library(stringr)
+library(gtsummary)
+library(finalfit)
+library(maftools)
+library(ggplot2)
+library(cowplot)
+library(paletteer)
+library(ggsci)
+library(data.table)
+library(forestploter)
+```
+
+### Figure S1B
+
+```{r message=FALSE, warning=FALSE}
+##### Fig S1B #####
+msk_blca_ercc2 <- read.csv("msk_blca_ercc2.csv")
+surv_obj_OS <- Surv(time = msk_blca_ercc2$OS_MONTHS, event = msk_blca_ercc2$OS_STATUS2)
+fit_OS_TMBXPD <- survfit(surv_obj_OS ~ XPDStatus+TMB_group25, data = msk_blca_ercc2)
+OS_TMB <- ggsurvplot(fit_OS_TMBXPD, 
+                     conf.int = F, 
+                     legend.title = "XPD-TMB",
+                     legend.labs=c("WT-TMB High","WT-TMB Low","Mut-TMB High","Mut-TMB Low"),
+                     palette = c("#FF8B00", "#FF8B00","#B50070", "#B50070"),
+                     linetype = c("solid", "dashed", "solid", "dashed"), 
+                     font.main = 14,
+                     font.x = 12,
+                     xlim = c(0,120),
+                     font.y = 12,
+                     font.tickslab = 12,
+                     break.time.by = 12)
+figs1b <- OS_TMB
+figs1b
+
+```
+
+### Figure S1D
+
+```{r message=FALSE, warning=FALSE}
+##### Fig S1D #####
+##### download mutation data #####
+#TP53, ARID1A, KDM6A, KMT2D, RB1 and FBXW7
+# https://www.cbioportal.org/results/comparison?cancer_study_list=paired_bladder_2022&Z_SCORE_THRESHOLD=2.0&RPPA_SCORE_THRESHOLD=2.0&profileFilter=mutations%2Cstructural_variants%2Ccna&case_set_id=paired_bladder_2022_cnaseq&gene_list=TP53&geneset_list=%20&tab_index=tab_visualize&Action=Submit&comparison_subtab=survival
+# https://www.cbioportal.org/results/comparison?cancer_study_list=paired_bladder_2022&Z_SCORE_THRESHOLD=2.0&RPPA_SCORE_THRESHOLD=2.0&profileFilter=mutations%2Cstructural_variants%2Ccna&case_set_id=paired_bladder_2022_cnaseq&gene_list=ARID1A&geneset_list=%20&tab_index=tab_visualize&Action=Submit&comparison_subtab=survival
+# https://www.cbioportal.org/results/comparison?cancer_study_list=paired_bladder_2022&Z_SCORE_THRESHOLD=2.0&RPPA_SCORE_THRESHOLD=2.0&profileFilter=mutations%2Cstructural_variants%2Ccna&case_set_id=paired_bladder_2022_cnaseq&gene_list=KDM6A&geneset_list=%20&tab_index=tab_visualize&Action=Submit&comparison_subtab=survival
+# https://www.cbioportal.org/results/comparison?cancer_study_list=paired_bladder_2022&Z_SCORE_THRESHOLD=2.0&RPPA_SCORE_THRESHOLD=2.0&profileFilter=mutations%2Cstructural_variants%2Ccna&case_set_id=paired_bladder_2022_cnaseq&gene_list=KMT2D&geneset_list=%20&tab_index=tab_visualize&Action=Submit&comparison_subtab=survival
+# https://www.cbioportal.org/results/comparison?cancer_study_list=paired_bladder_2022&Z_SCORE_THRESHOLD=2.0&RPPA_SCORE_THRESHOLD=2.0&profileFilter=mutations%2Cstructural_variants%2Ccna&case_set_id=paired_bladder_2022_cnaseq&gene_list=RB1&geneset_list=%20&tab_index=tab_visualize&Action=Submit&comparison_subtab=survival
+# https://www.cbioportal.org/results/comparison?cancer_study_list=paired_bladder_2022&Z_SCORE_THRESHOLD=2.0&RPPA_SCORE_THRESHOLD=2.0&profileFilter=mutations%2Cstructural_variants%2Ccna&case_set_id=paired_bladder_2022_cnaseq&gene_list=FBXW7&geneset_list=%20&tab_index=tab_visualize&Action=Submit&comparison_subtab=survival
+
+OS_TP53 <- read.delim("OS_TP53.txt")
+OS_ARID1A <- read.delim("OS_ARID1A.txt")
+OS_KDM6A <- read.delim("OS_KDM6A.txt")
+OS_KMT2D <- read.delim("OS_KMT2D.txt")
+OS_RB1 <- read.delim("OS_RB1.txt")
+OS_FBXW7 <- read.delim("OS_FBXW7.txt")
+
+tp53.sample.id <- OS_TP53$Case.ID
+arid1a.sample.id <- OS_ARID1A$Case.ID
+kdm6a.sample.id <- OS_KDM6A$Case.ID
+kmt2d.sample.id <- OS_KMT2D$Case.ID
+rb1.sample.id <- OS_RB1$Case.ID
+fbxw7.sample.id <- OS_FBXW7$Case.ID
+
+msk_blca_ercc2 <- msk_blca_ercc2 %>%
+  mutate(TP53 = if_else(PATIENT_ID %in% tp53.sample.id, "mut", "WT")) 
+msk_blca_ercc2 <- msk_blca_ercc2 %>%
+  mutate(ARID1A = if_else(PATIENT_ID %in% arid1a.sample.id, "mut", "WT"))
+msk_blca_ercc2 <- msk_blca_ercc2 %>%
+  mutate(KDM6A = if_else(PATIENT_ID %in% kdm6a.sample.id, "mut", "WT"))
+msk_blca_ercc2 <- msk_blca_ercc2 %>%
+  mutate(KMT2D = if_else(PATIENT_ID %in% kmt2d.sample.id, "mut", "WT"))
+msk_blca_ercc2 <- msk_blca_ercc2 %>%
+  mutate(RB1 = if_else(PATIENT_ID %in% rb1.sample.id, "mut", "WT"))
+msk_blca_ercc2 <- msk_blca_ercc2 %>%
+  mutate(FBXW7 = if_else(PATIENT_ID %in% fbxw7.sample.id, "mut", "WT"))
+
+explanatory <- c("TP53","ARID1A","KDM6A","KMT2D","RB1","FBXW7")
+dependent = "Surv(OS_MONTHS, OS_STATUS2)"
+msk_blca_ercc2$TP53 <- as.factor(msk_blca_ercc2$TP53)
+msk_blca_ercc2$TP53 <- relevel(msk_blca_ercc2$TP53, ref = "WT") 
+msk_blca_ercc2$ARID1A <- as.factor(msk_blca_ercc2$ARID1A)
+msk_blca_ercc2$ARID1A <- relevel(msk_blca_ercc2$ARID1A, ref = "WT") 
+msk_blca_ercc2$KDM6A <- as.factor(msk_blca_ercc2$KDM6A)
+msk_blca_ercc2$KDM6A <- relevel(msk_blca_ercc2$KDM6A, ref = "WT") 
+msk_blca_ercc2$KMT2D <- as.factor(msk_blca_ercc2$KMT2D)
+msk_blca_ercc2$KMT2D <- relevel(msk_blca_ercc2$KMT2D, ref = "WT") 
+msk_blca_ercc2$RB1 <- as.factor(msk_blca_ercc2$RB1)
+msk_blca_ercc2$RB1 <- relevel(msk_blca_ercc2$RB1, ref = "WT") 
+msk_blca_ercc2$FBXW7 <- as.factor(msk_blca_ercc2$FBXW7)
+msk_blca_ercc2$FBXW7 <- relevel(msk_blca_ercc2$FBXW7, ref = "WT") 
+
+msk_blca_ercc2 %>%
+  finalfit(dependent, explanatory) -> HR_table_co_mut
+
+#Edit HR_table_co_mut manually for plot the HR table and forest plot
+#save as df_for_forest_comut6genes.csv
+tm <- forest_theme(base_size = 10,
+                   refline_col = "red",
+                   footnote_col = "blue",
+                   legend_value = c("Univariable", "Multivarible"))
+df_for_forest_comut6genes <- read.csv("df_for_forest_comut6genes.csv")
+df_for_forest_comut6genes$` ` <- paste(rep(" ", 20), collapse = " ")
+figs1d <- forest(df_for_forest_comut6genes[,c(1, 2, 3, 8)],
+            est = list(df_for_forest_comut6genes$est_uni),
+            lower = list(df_for_forest_comut6genes$lower_uni), 
+            upper = list(df_for_forest_comut6genes$upper_uni),
+            xlim = c(0, 2),
+            ci_column = c(4),
+            ref_line = 1,
+            nudge_y = 0.2,
+            theme = tm)
+
+figs1d
+
+```
+
+### Figure S1E-J
+
+```{r message=FALSE, warning=FALSE}
+fit_OS_TP53 <- survfit(surv_obj_OS ~ TP53+XPDStatus, data = msk_blca_ercc2)
+fit_OS_ARID1A <- survfit(surv_obj_OS ~ ARID1A+XPDStatus, data = msk_blca_ercc2)
+fit_OS_KDM6A <- survfit(surv_obj_OS ~ KDM6A+XPDStatus, data = msk_blca_ercc2)
+fit_OS_KMT2D <- survfit(surv_obj_OS ~ KMT2D+XPDStatus, data = msk_blca_ercc2)
+fit_OS_RB1 <- survfit(surv_obj_OS ~ RB1+XPDStatus, data = msk_blca_ercc2)
+fit_OS_FBXW7 <- survfit(surv_obj_OS ~ FBXW7+XPDStatus, data = msk_blca_ercc2)
+
+OS_TP53 <- ggsurvplot(fit_OS_TP53, conf.int=F, risk.table=F, 
+                      legend.title="Genes-XPD",
+                      legend.labs=c("Mut-Mut","Mut-WT","WT-Mut","WT-WT"),
+                      palette=c("#FF8B00", "#B50070","#FF8B00", "#B50070"),
+                      linetype = c("solid", "solid", "dashed", "dashed"),
+                      title="TP53",
+                      font.main = 14,
+                      font.x = 12,
+                      font.y = 12,
+                      surv.median.line = "hv",
+                      font.tickslab = 12,
+                      font.pval = 10,
+                      axes.offset=FALSE,
+                      legend = "right",
+                      break.time.by = 12)
+
+OS_ARID1A <- ggsurvplot(fit_OS_ARID1A, conf.int=F, risk.table=F, 
+                        legend.title="Genes-XPD",
+                        legend.labs=c("Mut-Mut","Mut-WT","WT-Mut","WT-WT"),  
+                        palette = c("#FF8B00", "#B50070","#FF8B00", "#B50070"),
+                        linetype = c("solid", "solid", "dashed", "dashed"), 
+                        title="ARID1",
+                        font.main = 14,
+                        font.x = 12,
+                        font.y = 12,
+                        surv.median.line = "hv",
+                        font.tickslab = 12,
+                        font.pval = 10,
+                        axes.offset=FALSE,
+                        legend = "right",
+                        break.time.by = 12)
+
+OS_KDM6A <- ggsurvplot(fit_OS_KDM6A, conf.int=F, risk.table=F, 
+                       legend.title="Genes-XPD",
+                       legend.labs=c("Mut-Mut","Mut-WT","WT-Mut","WT-WT"),  
+                       palette = c("#FF8B00", "#B50070","#FF8B00", "#B50070"),
+                       linetype = c("solid", "solid", "dashed", "dashed"),
+                       title="KDM6A",
+                       font.main = 14,
+                       font.x = 12,
+                       font.y = 12,
+                       surv.median.line = "hv",
+                       font.tickslab = 12,
+                       font.pval = 10,
+                       axes.offset=FALSE,
+                       legend = "right",
+                       break.time.by = 12)
+
+OS_KMT2D <- ggsurvplot(fit_OS_KMT2D, conf.int=F, risk.table=F, 
+                       legend.title="Genes-XPD",
+                       legend.labs=c("Mut-Mut","Mut-WT","WT-Mut","WT-WT"),  
+                       palette=c("#FF8B00", "#B50070","#FF8B00", "#B50070"), 
+                       linetype = c("solid", "solid", "dashed", "dashed"),
+                       title="KMT2D",
+                       font.main = 14,
+                       font.x = 12,
+                       font.y = 12,
+                       surv.median.line = "hv",
+                       font.tickslab = 12,
+                       font.pval = 10,
+                       axes.offset=FALSE,
+                       legend = "right",
+                       break.time.by = 12)
+
+OS_RB1 <- ggsurvplot(fit_OS_RB1, conf.int=F, risk.table=F, 
+                     legend.title="Genes-XPD",
+                     legend.labs=c("Mut-Mut","Mut-WT","WT-Mut","WT-WT"), 
+                     palette = c("#FF8B00", "#B50070","#FF8B00", "#B50070"),
+                     linetype = c("solid", "solid", "dashed", "dashed"),
+                     title="RB1",
+                     font.main = 14,
+                     font.x = 12,
+                     font.y = 12,
+                     surv.median.line = "hv",
+                     font.tickslab = 12,
+                     font.pval = 10,
+                     axes.offset=FALSE,
+                     legend = "right",
+                     break.time.by = 12)
+
+OS_FBXW7 <- ggsurvplot(fit_OS_FBXW7, conf.int=F, risk.table=F, 
+                       legend.title="Genes-XPD",
+                       legend.labs=c("Mut-Mut","Mut-WT","WT-Mut","WT-WT"), 
+                       palette = c("#FF8B00", "#B50070","#FF8B00", "#B50070"),
+                       linetype = c("solid", "solid", "dashed", "dashed"),
+                       title=" FBXW7",
+                       font.main = 14,
+                       font.x = 12,
+                       font.y = 12,
+                       surv.median.line = "hv",
+                       font.tickslab = 12,
+                       font.pval = 10,
+                       axes.offset=FALSE,
+                       legend = "right",
+                       break.time.by = 12)
+
+plot_grid(
+  OS_TP53$plot + theme(legend.position = 'none'),
+  OS_ARID1A$plot + theme(legend.position = 'none'),
+  OS_KDM6A$plot + theme(legend.position = 'none'),
+  OS_KMT2D$plot + theme(legend.position = 'none'),
+  OS_RB1$plot + theme(legend.position = 'none'),
+  OS_FBXW7$plot + theme(legend.position = 'none'),
+  labels = "AUTO", ncol = 2
+)
+```
